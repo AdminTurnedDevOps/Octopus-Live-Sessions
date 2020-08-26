@@ -1,0 +1,36 @@
+name: Octopus Project
+
+env:
+  project: DevProject
+  server: https://mikelevanoctopus.octopus.app
+
+on:
+  push:
+    branches: master
+    
+  schedule:
+    - cron: '0 0 * * *'
+    
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install Octopus Command-Line Interface
+        run: sudo apt update && sudo apt install --no-install-recommends gnupg curl ca-certificates apt-transport-https &&
+             curl -sSfL https://apt.octopus.com/public.key | sudo apt-key add - &&
+             sudo sh -c "echo deb https://apt.octopus.com/ stable main > /etc/apt/sources.list.d/octopus.com.list" &&
+             sudo apt update && sudo apt install octopuscli
+             
+      - name: Create Deployment Directory
+        run: mkdir /tmp/deployments
+             
+      - name: List Releases
+        run: octo list-deployments --project=${{ env.project }} --server=${{ env.server }} --apiKey=${{ secrets.APIKEY }} >> /tmp/deployments/deployments.txt
+
+      - name: Azure Storage Action
+        uses: lauchacarro/Azure-Storage-Action@v1.1
+        with:
+          connection-string: ${{ secrets.StorageAccountConnectionString }}
+          folder: /tmp/deployments
+          blob-container-name: deployments
